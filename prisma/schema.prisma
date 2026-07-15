@@ -1,0 +1,643 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  username         String?           @unique
+  email            String?           @unique
+  displayUsername  String?
+  name             String
+  emailVerified    Boolean           @default(true)
+  twoFactorEnabled Boolean?
+  lastLoginMethod  String?
+  status           StatutUtilisateur @default(ACTIVE)
+  role_id          String?
+  role             Role?             @relation(fields: [role_id], references: [id])
+  paiements        Paiement[]
+  presences        Presence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ============================================================================
+// ÉTABLISSEMENT & PARAMÈTRES
+// ============================================================================
+
+model Etablissement {
+  id               String          @id @default(uuid())
+  nom              String          @default("Complexe Scolaire Les Flamboyants")
+  ville            String          @default("Brazzaville")
+  adresse          String?
+  telephone        String?
+  email            String?
+  logo_url         String?
+  devise           String          @default("FCFA")
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+  annees_scolaires AnneeScolaire[]
+
+  @@map("schools")
+}
+
+model AnneeScolaire {
+  id         String   @id @default(uuid())
+  libelle    String // ex: "2025-2026"
+  date_debut DateTime
+  date_fin   DateTime
+  active     Boolean  @default(false)
+
+  etablissement_id String
+  etablissement    Etablissement @relation(fields: [etablissement_id], references: [id], onDelete: Cascade)
+
+  classes    Classe[]
+  frais      FraisScolaire[]
+  bulletins  Bulletin[]
+  notes      Note[]
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  @@unique([etablissement_id, libelle])
+  @@map("school_years")
+}
+
+// ============================================================================
+// SCOLARITÉ : NIVEAUX, CLASSES, ÉLÈVES, PARENTS
+// ============================================================================
+
+model Niveau {
+  id    String @id @default(uuid())
+  nom   String // ex: "CP1", "6e", "Tle D"
+  cycle Cycle
+  ordre Int // pour le tri (CP1=1 ... Tle=13)
+
+  classes    Classe[]
+  matieres   MatiereNiveau[]
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  @@unique([nom, cycle])
+  @@map("grade_levels")
+}
+
+model Classe {
+  id                      String  @id @default(uuid())
+  nom                     String // ex: "6e A"
+  effectif_max            Int     @default(100)
+  niveau_id               String
+  annee_scolaire_id       String
+  professeur_principal_id String?
+
+  annee_scolaire       AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+  niveau               Niveau        @relation(fields: [niveau_id], references: [id])
+  professeur_principal Personnel?    @relation("ProfesseurPrincipal", fields: [professeur_principal_id], references: [id])
+
+  eleves        Eleve[]
+  emplois_temps EmploiTemps[]
+  bulletins     Bulletin[]
+  presences     Presence[]
+  enseignements Enseignement[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([nom, annee_scolaire_id])
+  @@map("classrooms")
+}
+
+model Eleve {
+  id               String      @id @default(uuid())
+  matricule        String      @unique
+  nom              String
+  prenom           String
+  date_naissance   DateTime
+  lieu_naissance   String?
+  genre            Genre
+  photo_url        String?
+  statut           StatutEleve @default(ACTIVE)
+  date_inscription DateTime    @default(now())
+
+  classe_id String?
+  classe    Classe? @relation(fields: [classe_id], references: [id])
+
+  parents       EleveParent[]
+  paiements     Paiement[]
+  notes         Note[]
+  bulletins     Bulletin[]
+  presences     Presence[]
+  notifications Notification[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("students")
+}
+
+model Parent {
+  id         String  @id @default(uuid())
+  nom        String
+  prenom     String
+  telephone  String
+  email      String?
+  profession String?
+  adresse    String?
+
+  enfants       EleveParent[]
+  notifications Notification[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("parent")
+}
+
+model EleveParent {
+  eleve_id     String
+  parent_id    String
+  lien_parente LienParente
+
+  eleve             Eleve   @relation(fields: [eleve_id], references: [id], onDelete: Cascade)
+  parent            Parent  @relation(fields: [parent_id], references: [id], onDelete: Cascade)
+  contact_principal Boolean @default(false)
+
+  @@id([eleve_id, parent_id])
+  @@map("student_parent")
+}
+
+// ============================================================================
+// FINANCES : FRAIS, PAIEMENTS
+// ============================================================================
+
+model FraisScolaire {
+  id                String        @id @default(uuid())
+  libelle           String // ex: "Scolarité annuelle - Collège"
+  type              TypeFrais
+  cycle             Cycle
+  montant           Decimal       @db.Decimal(10, 2)
+  annee_scolaire_id String
+  annee_scolaire    AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+
+  echeances Echeance[]
+
+  @@map("school_fees")
+}
+
+model Echeance {
+  id            String   @id @default(uuid())
+  libelle       String // ex: "1ère tranche"
+  montant       Decimal  @db.Decimal(10, 2)
+  date_echeance DateTime
+
+  frais_id String
+  frais    FraisScolaire @relation(fields: [frais_id], references: [id])
+
+  paiements Paiement[]
+
+  @@map("fee_installments")
+}
+
+model Paiement {
+  id            String         @id @default(uuid())
+  numero        String         @unique
+  montant       Decimal        @db.Decimal(10, 2)
+  mode          ModePaiement
+  reference     String? // référence Mobile Money / chèque
+  date_paiement DateTime       @default(now())
+  statut        StatutPaiement @default(PAID)
+  eleve_id      String
+  echeance_id   String?
+  caissier_id   String
+
+  eleve    Eleve     @relation(fields: [eleve_id], references: [id])
+  echeance Echeance? @relation(fields: [echeance_id], references: [id])
+  caissier User      @relation(fields: [caissier_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([numero, eleve_id])
+  @@map("payments")
+}
+
+// ============================================================================
+// RH : PERSONNEL, CONTRATS, SALAIRES
+// ============================================================================
+
+model Personnel {
+  id           String          @id @default(uuid())
+  matricule    String          @unique
+  nom          String
+  prenom       String
+  telephone    String?
+  email        String?
+  poste        String // ex: "Enseignant", "Comptable", "Surveillant"
+  dateEmbauche DateTime
+  statut       StatutPersonnel @default(ACTIVE)
+  photoUrl     String?
+
+  contrats          Contrat[]
+  bulletins_salaire BulletinSalaire[]
+  enseignements     Enseignement[]
+  emplois_temps     EmploiTemps[]
+  classes_principal Classe[]          @relation("ProfesseurPrincipal")
+  notes_attribuees  Note[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([matricule])
+  @@map("employees")
+}
+
+model Contrat {
+  id         String        @id @default(uuid())
+  type       TypeContrat
+  salaire    Decimal       @db.Decimal(10, 2)
+  date_debut DateTime
+  date_fin   DateTime?
+  statut     StatutContrat @default(ACTIVE)
+
+  personnel_id String
+  personnel    Personnel @relation(fields: [personnel_id], references: [id])
+
+  @@map("employment_contracts")
+}
+
+model BulletinSalaire {
+  id            String         @id @default(uuid())
+  mois          Int
+  annee         Int
+  salaire       Decimal        @db.Decimal(10, 2)
+  primes        Int            @default(0)
+  retenues      Int            @default(0)
+  net_payer     Int
+  date_paiement DateTime?
+  statut        StatutPaiement @default(UNPAID)
+
+  personnel_id String
+  personnel    Personnel @relation(fields: [personnel_id], references: [id])
+
+  @@unique([personnel_id, mois, annee])
+  @@map("payrolls")
+}
+
+// ============================================================================
+// PÉDAGOGIE : MATIÈRES, EMPLOI DU TEMPS, ENSEIGNEMENTS
+// ============================================================================
+
+model Matiere {
+  id            String          @id @default(uuid())
+  nom           String          @unique
+  coefficient   Int             @default(1)
+  niveaux       MatiereNiveau[]
+  enseignements Enseignement[]
+  emplois_temps EmploiTemps[]
+  notes         Note[]
+
+  @@index([nom])
+  @@map("subjects")
+}
+
+model MatiereNiveau {
+  matiere_id String
+  niveau_id  String
+  niveau     Niveau  @relation(fields: [niveau_id], references: [id], onDelete: Cascade)
+  matiere    Matiere @relation(fields: [matiere_id], references: [id], onDelete: Cascade)
+
+  @@id([matiere_id, niveau_id])
+  @@index([matiere_id, niveau_id])
+  @@map("subject_grade_levels")
+}
+
+// Affectation d'un enseignant à une matière pour une classe donnée
+model Enseignement {
+  id           String @id @default(uuid())
+  classe_id    String
+  matiere_id   String
+  personnel_id String
+
+  personnel Personnel @relation(fields: [personnel_id], references: [id])
+  matiere   Matiere   @relation(fields: [matiere_id], references: [id])
+  classe    Classe    @relation(fields: [classe_id], references: [id])
+
+  @@unique([matiere_id, classe_id])
+  @@map("teaching_assignments")
+}
+
+model EmploiTemps {
+  id           String      @id @default(uuid())
+  jour         JourSemaine
+  heure_debut  String // ex: "08:00"
+  heure_fin    String // ex: "09:00"
+  salle        String?
+  personnel_id String
+  matiere_id   String
+  classe_id    String
+
+  classe    Classe    @relation(fields: [classe_id], references: [id])
+  matiere   Matiere   @relation(fields: [matiere_id], references: [id])
+  personnel Personnel @relation(fields: [personnel_id], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("timetables")
+}
+
+// ============================================================================
+// ÉVALUATIONS : NOTES, BULLETINS, PRÉSENCES
+// ============================================================================
+
+model Note {
+  id                String         @id @default(uuid())
+  type              TypeEvaluation
+  valeur            Float
+  noteSur           Float          @default(20)
+  trimestre         Trimestre
+  date              DateTime       @default(now())
+  appreciation      String?
+  enseignant_id     String
+  annee_scolaire_id String
+  eleve_id          String
+  matiere_id        String
+
+  eleve         Eleve         @relation(fields: [eleve_id], references: [id])
+  matiere       Matiere       @relation(fields: [matiere_id], references: [id])
+  enseignant    Personnel     @relation(fields: [enseignant_id], references: [id])
+  anneeScolaire AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+
+  @@map("grades")
+}
+
+model Bulletin {
+  id                    String    @id @default(uuid())
+  trimestre             Trimestre
+  moyenne_generale      Float
+  rang                  Int?
+  appreciation_generale String?
+  date_generation       DateTime  @default(now())
+  fichier_url           String?
+  classe_id             String
+  eleve_id              String
+  annee_scolaire_id     String
+
+  eleve          Eleve         @relation(fields: [eleve_id], references: [id])
+  classe         Classe        @relation(fields: [classe_id], references: [id])
+  annee_scolaire AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+
+  @@unique([eleve_id, trimestre, annee_scolaire_id])
+  @@map("report_cards")
+}
+
+model Presence {
+  id           String         @id @default(uuid())
+  date         DateTime       @default(now())
+  statut       StatutPresence
+  justificatif String?
+  eleve_id     String
+  user_id      String?
+  classe_id    String
+
+  eleve  Eleve  @relation(fields: [eleve_id], references: [id])
+  classe Classe @relation(fields: [classe_id], references: [id])
+
+  utilisateurs User? @relation(fields: [user_id], references: [id])
+
+  @@unique([eleve_id, date])
+  @@map("attendances")
+}
+
+// ============================================================================
+// SYSTÈME : UTILISATEURS, RÔLES, PERMISSIONS, NOTIFICATIONS
+// ============================================================================
+
+model Role {
+  id          String  @id @default(uuid())
+  nom         String  @unique // ex: "Administrateur", "Comptable", "Enseignant"
+  description String?
+
+  utilisateurs User[]
+  permissions  RolePermission[]
+
+  @@map("role")
+}
+
+model Permission {
+  id     String @id @default(uuid())
+  module String // ex: "eleves", "paiements", "notes"
+  action String // ex: "lire", "creer", "modifier", "supprimer"
+
+  roles RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permission")
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  canal     CanalNotification
+  sujet     String?
+  message   String
+  statut    StatutNotification @default(PENDING)
+  dateEnvoi DateTime?
+  parent_id String?
+  eleve_id  String?
+
+  eleve  Eleve?  @relation(fields: [eleve_id], references: [id])
+  parent Parent? @relation(fields: [parent_id], references: [id])
+
+  created_at DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Cycle {
+  NURSERY
+  PRIMARY
+  MIDDLE
+  SECONDARY
+}
+
+enum Genre {
+  M
+  F
+}
+
+enum StatutEleve {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  GRADUATE
+  TRANSFERRED
+}
+
+enum LienParente {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+}
+
+enum TypeFrais {
+  REGISTRATION
+  SCHOOL_FEES
+  SCHOOL_MEALS
+  TRANSPORT
+  EXAMS
+  OTHER
+}
+
+enum StatutPaiement {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum ModePaiement {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CHEQUE
+}
+
+enum TypeContrat {
+  CDI
+  CDD
+  VACATAIRE
+}
+
+enum StatutContrat {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum StatutPersonnel {
+  ACTIVE
+  INACTIVE
+}
+
+enum TypeEvaluation {
+  HOMEWORK
+  TEST
+  COMPOSITION
+}
+
+enum Trimestre {
+  T1
+  T2
+  T3
+}
+
+enum StatutPresence {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum JourSemaine {
+  LUNDI
+  MARDI
+  MERCREDI
+  JEUDI
+  VENDREDI
+  SAMEDI
+}
+
+enum CanalNotification {
+  EMAIL
+}
+
+enum StatutNotification {
+  PENDING
+  SEND
+  FAILED
+}
+
+enum StatutUtilisateur {
+  ACTIVE
+  INACTIVE
+}
