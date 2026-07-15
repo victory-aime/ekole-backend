@@ -1,0 +1,12 @@
+import { BASE_APIS_URL, APIS_URL_GLOBAL_PATH } from './enum';
+
+export const API_URL = {
+  AUTH: {
+    SEND_VERIFICATION: `${BASE_APIS_URL.UNSECURED}/${APIS_URL_GLOBAL_PATH.AUTH}/send-email-verification`,
+    RESEND_VERIFICATION_OTP: `${BASE_APIS_URL.UNSECURED}/${APIS_URL_GLOBAL_PATH.AUTH}/resend-verification-otp`,
+    VERIFY_OTP: `${BASE_APIS_URL.SECURED}/${APIS_URL_GLOBAL_PATH.AUTH}/verify-otp`,
+  },
+  USER: {
+    INFO: `${BASE_APIS_URL.SECURED}/${APIS_URL_GLOBAL_PATH.USERS}/info`,
+  },
+};

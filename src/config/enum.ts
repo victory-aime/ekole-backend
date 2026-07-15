@@ -1,0 +1,36 @@
+enum BASE_APIS_URL {
+  UNSECURED = 'v1/unsecured',
+  SECURED = 'v1/secure',
+  SWAGGER = 'v1/bo',
+}
+
+enum APIS_URL_GLOBAL_PATH {
+  USERS = 'users',
+  AUTH = 'auth',
+}
+
+enum CLOUDINARY_FOLDER_NAME {}
+
+enum EXPIRE_TIME {
+  _2_MINUTES = 120,
+  _5_MINUTES = 300,
+  _15_MINUTES = 900,
+  _30_MINUTES = 1800,
+  _60_MINUTES = 3600,
+  _1_DAY = 86400,
+  _2_DAYS = 172800,
+  _3_DAYS = 259200,
+  _4_DAYS = 345600,
+  _5_DAYS = 432000,
+  _6_DAYS = 518400,
+  _7_DAYS = 604800,
+  _15_DAYS = 1296000,
+  _30_DAYS = 2592000,
+}
+
+export {
+  CLOUDINARY_FOLDER_NAME,
+  BASE_APIS_URL,
+  EXPIRE_TIME,
+  APIS_URL_GLOBAL_PATH,
+};
