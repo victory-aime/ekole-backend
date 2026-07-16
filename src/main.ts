@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import figlet from 'figlet';
 import * as express from 'express';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AuthService } from '@thallesp/nestjs-better-auth';
@@ -50,13 +49,6 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
-  await app.listen(process.env.PORT!, async () => {
-    figlet(`${new Date().getFullYear()}- ${process.env.APP_NAME}`, (_, data) => {
-      console.log('\x1b[1m\x1b[32m%s\x1b[0m', data);
-      figlet('Powered By VICTORY', { font: 'Small' }, (a, res) =>
-        console.log('\x1b[35m%s\x1b[0m', res),
-      );
-    });
-  });
+  await app.listen(process.env.PORT!);
 }
 bootstrap();
