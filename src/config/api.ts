@@ -11,5 +11,6 @@ export const API_URL = {
   },
   ESTABLISHMENT: {
     GET_ALL: `${APIS_URL_GLOBAL_PATH.ESTABLISHMENT}/list`,
+    CREATE: `${APIS_URL_GLOBAL_PATH.ESTABLISHMENT}/create-establishment`,
   },
 };

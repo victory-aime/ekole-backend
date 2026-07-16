@@ -93,7 +93,8 @@ model Verification {
 
 model Etablissement {
   id               String          @id @default(uuid())
-  nom              String          @default("Complexe Scolaire Les Flamboyants")
+  nom              String          @unique @default("Complexe Scolaire Les Flamboyants")
+  sigle            String?         @unique
   ville            String          @default("Brazzaville")
   adresse          String?
   telephone        String?
@@ -104,6 +105,7 @@ model Etablissement {
   updated_at       DateTime        @updatedAt
   annees_scolaires AnneeScolaire[]
 
+  @@unique([nom, sigle])
   @@map("schools")
 }
 
