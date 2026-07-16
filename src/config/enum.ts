@@ -6,6 +6,7 @@ enum BASE_APIS_URL {
 
 enum APIS_URL_GLOBAL_PATH {
   USERS = 'users',
+  ESTABLISHMENT = 'establishment',
   AUTH = 'auth',
 }
 
@@ -28,9 +29,4 @@ enum EXPIRE_TIME {
   _30_DAYS = 2592000,
 }
 
-export {
-  CLOUDINARY_FOLDER_NAME,
-  BASE_APIS_URL,
-  EXPIRE_TIME,
-  APIS_URL_GLOBAL_PATH,
-};
+export { CLOUDINARY_FOLDER_NAME, BASE_APIS_URL, EXPIRE_TIME, APIS_URL_GLOBAL_PATH };

@@ -9,4 +9,7 @@ export const API_URL = {
   USER: {
     INFO: `${BASE_APIS_URL.SECURED}/${APIS_URL_GLOBAL_PATH.USERS}/info`,
   },
+  ESTABLISHMENT: {
+    GET_ALL: `${APIS_URL_GLOBAL_PATH.ESTABLISHMENT}/list`,
+  },
 };
