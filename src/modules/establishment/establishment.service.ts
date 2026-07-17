@@ -2,10 +2,15 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ICreateEstablishment } from './establishment.dto';
 import { HttpError } from 'src/config/http.error';
+import { SchoolYearService } from '../school-year/school-year.service';
 
 @Injectable()
 export class EstablishmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly schoolYearService: SchoolYearService,
+  ) {}
+
   async getEstablishment() {
     const establishments = await this.prisma.etablissement.findMany({
       include: {
@@ -55,6 +60,11 @@ export class EstablishmentService {
     if (find) {
       throw new HttpError('Cet etablissement exist deja', HttpStatus.CONFLICT);
     }
+    const trimestres = await this.schoolYearService.generateTrimestres(
+      new Date(data.annees_scolaires.date_debut),
+      new Date(data.annees_scolaires.date_fin),
+    );
+
     await this.prisma.etablissement.create({
       data: {
         adresse,
@@ -66,7 +76,10 @@ export class EstablishmentService {
         annees_scolaires: {
           create: {
             ...annees_scolaires,
-            active: true,
+            active: new Date() === new Date(data.annees_scolaires.date_debut),
+            trimestres: {
+              createMany: { data: trimestres },
+            },
           },
         },
       },

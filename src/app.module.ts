@@ -8,6 +8,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { BetterAuthModule } from './lib/auth.module';
 import { EstablishmentModule } from './modules/establishment/establishment.module';
 import { DatabaseModule } from './database/database.module';
+import { SchoolYearModule } from './modules/school-year/school-year.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { DatabaseModule } from './database/database.module';
     BetterAuthModule,
     UsersModule,
     EstablishmentModule,
+    SchoolYearModule,
   ],
 
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }],

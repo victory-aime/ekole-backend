@@ -56,7 +56,7 @@ pids
 *.pid
 *.seed
 *.pid.lock
- pnpm-workspace.*
+pnpm-workspace*
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

@@ -111,23 +111,44 @@ model Etablissement {
 
 model AnneeScolaire {
   id         String   @id @default(uuid())
-  libelle    String // ex: "2025-2026"
+  libelle    String
   date_debut DateTime
   date_fin   DateTime
   active     Boolean  @default(false)
 
   etablissement_id String
-  etablissement    Etablissement @relation(fields: [etablissement_id], references: [id], onDelete: Cascade)
+  etablissement    Etablissement @relation(fields: [etablissement_id], references: [id])
 
-  classes    Classe[]
-  frais      FraisScolaire[]
-  bulletins  Bulletin[]
-  notes      Note[]
-  created_at DateTime        @default(now())
-  updated_at DateTime        @updatedAt
+  trimestres Trimestre[]
+
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  classes        Classe[]
+  fraisScolaires FraisScolaire[]
+  notes          Note[]
+  bulletins      Bulletin[]
 
   @@unique([etablissement_id, libelle])
+  @@index([etablissement_id, active])
   @@map("school_years")
+}
+
+model Trimestre {
+  id                String        @id @default(uuid())
+  numero            Int
+  nom               String
+  date_debut        DateTime
+  date_fin          DateTime
+  actif             Boolean       @default(false)
+  verrouille        Boolean       @default(false)
+  annee_scolaire_id String
+  annee_scolaire    AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id], onDelete: Cascade)
+  notes             Note[]
+  bulletins         Bulletin[]
+  echeances         Echeance[]
+
+  @@unique([annee_scolaire_id, numero])
+  @@map("school_terms")
 }
 
 // ============================================================================
@@ -253,12 +274,14 @@ model FraisScolaire {
 
 model Echeance {
   id            String   @id @default(uuid())
-  libelle       String // ex: "1ère tranche"
+  libelle       String
   montant       Decimal  @db.Decimal(10, 2)
   date_echeance DateTime
 
-  frais_id String
-  frais    FraisScolaire @relation(fields: [frais_id], references: [id])
+  frais_id     String
+  trimestre_id String?
+  frais        FraisScolaire @relation(fields: [frais_id], references: [id])
+  trimestre    Trimestre?    @relation(fields: [trimestre_id], references: [id])
 
   paiements Paiement[]
 
@@ -422,39 +445,41 @@ model Note {
   type              TypeEvaluation
   valeur            Float
   noteSur           Float          @default(20)
-  trimestre         Trimestre
   date              DateTime       @default(now())
   appreciation      String?
   enseignant_id     String
   annee_scolaire_id String
   eleve_id          String
   matiere_id        String
+  trimestre_id      String
 
   eleve         Eleve         @relation(fields: [eleve_id], references: [id])
   matiere       Matiere       @relation(fields: [matiere_id], references: [id])
   enseignant    Personnel     @relation(fields: [enseignant_id], references: [id])
   anneeScolaire AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+  trimestre     Trimestre     @relation(fields: [trimestre_id], references: [id])
 
   @@map("grades")
 }
 
 model Bulletin {
-  id                    String    @id @default(uuid())
-  trimestre             Trimestre
+  id                    String   @id @default(uuid())
   moyenne_generale      Float
   rang                  Int?
   appreciation_generale String?
-  date_generation       DateTime  @default(now())
+  date_generation       DateTime @default(now())
   fichier_url           String?
   classe_id             String
+  trimestre_id          String?
   eleve_id              String
   annee_scolaire_id     String
 
   eleve          Eleve         @relation(fields: [eleve_id], references: [id])
   classe         Classe        @relation(fields: [classe_id], references: [id])
   annee_scolaire AnneeScolaire @relation(fields: [annee_scolaire_id], references: [id])
+  trimestre      Trimestre?    @relation(fields: [trimestre_id], references: [id])
 
-  @@unique([eleve_id, trimestre, annee_scolaire_id])
+  @@unique([eleve_id, trimestre_id, annee_scolaire_id])
   @@map("report_cards")
 }
 
@@ -605,12 +630,6 @@ enum TypeEvaluation {
   HOMEWORK
   TEST
   COMPOSITION
-}
-
-enum Trimestre {
-  T1
-  T2
-  T3
 }
 
 enum StatutPresence {

@@ -26,7 +26,6 @@ import {
   StatutPersonnel,
   StatutPresence,
   StatutUtilisateur,
-  Trimestre,
   TypeContrat,
   TypeEvaluation,
   TypeFrais,
@@ -34,6 +33,7 @@ import {
 import { prisma } from './client';
 import { randomUUID } from 'crypto';
 import { getAuthInstance } from '../../src/lib/auth';
+import { generateTerms } from '../../src/modules/school-year/generate-trimestre';
 
 // ----------------------------------------------------------------------------
 // CONSTANTES AJUSTABLES
@@ -188,6 +188,8 @@ let compteurRecu = 0;
 const nextMatriculeEleve = () => `ELV-2026-${pad(++compteurEleve)}`;
 const nextMatriculePersonnel = () => `PER-2026-${pad(++compteurPersonnel)}`;
 const nextNumeroRecu = () => `REC-2026-${pad(++compteurRecu, 6)}`;
+const startDate = new Date('2025-10-01');
+const endDate = new Date('2026-07-31');
 
 async function main() {
   console.log('Nettoyage de la base...');
@@ -216,6 +218,7 @@ async function main() {
   await prisma.permission.deleteMany();
   await prisma.anneeScolaire.deleteMany();
   await prisma.etablissement.deleteMany();
+  await prisma.trimestre.deleteMany();
 
   // --------------------------------------------------------------------------
   // ÉTABLISSEMENT & ANNÉE SCOLAIRE
@@ -235,12 +238,30 @@ async function main() {
   const anneeScolaire = await prisma.anneeScolaire.create({
     data: {
       libelle: '2025-2026',
-      date_debut: new Date('2025-10-01'),
-      date_fin: new Date('2026-07-31'),
+      date_debut: startDate,
+      date_fin: endDate,
       active: true,
       etablissement_id: etablissement.id,
     },
   });
+
+  await prisma.trimestre.createMany({
+    data: generateTerms(startDate, endDate).map((term) => ({
+      ...term,
+      annee_scolaire_id: anneeScolaire.id,
+    })),
+  });
+
+  const trimestres = await prisma.trimestre.findMany({
+    where: {
+      annee_scolaire_id: anneeScolaire.id,
+    },
+    orderBy: {
+      numero: 'asc',
+    },
+  });
+
+  const [t1, t2, t3] = trimestres;
 
   // --------------------------------------------------------------------------
   // RÔLES, PERMISSIONS, UTILISATEURS
@@ -830,34 +851,29 @@ async function main() {
       // Notes + présences (hors NURSERY)
       if (classe.cycle !== Cycle.NURSERY) {
         const enseignementsClasse = enseignementsParClasse[classe.id] || [];
-        for (const ens of enseignementsClasse) {
-          await prisma.note.create({
-            data: {
-              type: randItem([
-                TypeEvaluation.HOMEWORK,
-                TypeEvaluation.TEST,
-                TypeEvaluation.COMPOSITION,
-              ]),
-              valeur: Math.round((randInt(60, 195) / 10) * 10) / 10, // 6.0 à 19.5
-              noteSur: 20,
-              trimestre: Trimestre.T1,
-              date: new Date('2025-12-' + randInt(1, 15)),
-              appreciation: randItem([
-                'Bon travail',
-                'Peut mieux faire',
-                'Excellent',
-                'Assez bien',
-                'Effort à fournir',
-                null,
-              ]),
-              eleve_id: eleve.id,
-              matiere_id: ens.matiere_id,
-              enseignant_id: ens.personnel_id,
-              annee_scolaire_id: anneeScolaire.id,
-            },
-          });
+        for (const trimestre of trimestres) {
+          for (const eleve of elevesClasse) {
+            for (const ens of enseignementsClasse) {
+              await prisma.note.create({
+                data: {
+                  type: randItem([
+                    TypeEvaluation.HOMEWORK,
+                    TypeEvaluation.TEST,
+                    TypeEvaluation.COMPOSITION,
+                  ]),
+                  valeur: Math.round((randInt(60, 195) / 10) * 10) / 10,
+                  noteSur: 20,
+                  trimestre_id: trimestre.id,
+                  date: new Date(),
+                  eleve_id: eleve.id,
+                  matiere_id: ens.matiere_id,
+                  enseignant_id: ens.personnel_id,
+                  annee_scolaire_id: anneeScolaire.id,
+                },
+              });
+            }
+          }
         }
-
         for (let j = 0; j < JOURS_PRESENCE; j++) {
           const date = addDays(new Date(), -j);
           if (date.getDay() === 0 || date.getDay() === 6) continue; // pas le week-end
@@ -890,7 +906,7 @@ async function main() {
       const moyennes: { eleve_id: string; moyenne: number }[] = [];
       for (const eleve of elevesClasse) {
         const notesEleve = await prisma.note.findMany({
-          where: { eleve_id: eleve.id, trimestre: Trimestre.T1 },
+          where: { eleve_id: eleve.id, trimestre_id: t1.id },
         });
         let totalPondere = 0;
         let totalCoef = 0;
@@ -920,7 +936,7 @@ async function main() {
                   : 'Trimestre difficile, des efforts sont nécessaires.';
         await prisma.bulletin.create({
           data: {
-            trimestre: Trimestre.T1,
+            trimestre_id: t1.id,
             moyenne_generale: moyenne,
             rang: r + 1,
             appreciation_generale: appreciation,
