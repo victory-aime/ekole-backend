@@ -11,5 +11,13 @@ export const API_URL = {
   },
   ESTABLISHMENT: {
     GET_ALL: `${APIS_URL_GLOBAL_PATH.ESTABLISHMENT}/list`,
+    CREATE: `${APIS_URL_GLOBAL_PATH.ESTABLISHMENT}/create-establishment`,
+  },
+
+  SCHOOL_YEAR: {
+    GET_ALL: `${APIS_URL_GLOBAL_PATH.SCHOOL_YEAR}/list`,
+    UPDATE_TERMS: `${APIS_URL_GLOBAL_PATH.SCHOOL_YEAR}/update-terms`,
+    CREATE_YEAR: `${APIS_URL_GLOBAL_PATH.SCHOOL_YEAR}/create-year`,
+    DELETE_YEAR: `${APIS_URL_GLOBAL_PATH.SCHOOL_YEAR}/delete-year`,
   },
 };

@@ -7,6 +7,7 @@ enum BASE_APIS_URL {
 enum APIS_URL_GLOBAL_PATH {
   USERS = 'users',
   ESTABLISHMENT = 'establishment',
+  SCHOOL_YEAR = 'school-year',
   AUTH = 'auth',
 }
 
